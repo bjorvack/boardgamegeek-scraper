@@ -31,6 +31,34 @@ class GetBGGDataHandler
     public function handle(GetBGGData $data): void
     {
         $boardGame = $this->getData($data->getId());
+        $boardGame = $this->copyImageToLocal($boardGame);
+    }
+
+    /**
+     * @param BoardGame $boardGame
+     *
+     * @return BoardGame
+     */
+    private function copyImageToLocal(BoardGame $boardGame): BoardGame
+    {
+        $cachedImagePath = $this->rootDir . '/../public/boardgames/' . $boardGame->getId() . '/image.jpg';
+
+        if (!file_exists($cachedImagePath)) {
+            $curl = curl_init();
+            curl_setopt($curl, CURLOPT_URL, $boardGame->getImage());
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+            $result = curl_exec($curl);
+            curl_close($curl);
+
+            file_put_contents($cachedImagePath, $result);
+        }
+
+        return new BoardGame(
+            $boardGame->getId(),
+            $boardGame->getName(),
+            $boardGame->getDescription(),
+            '/boardgames/' . $boardGame->getId() . '/image.jpg'
+        );
     }
 
     /**
