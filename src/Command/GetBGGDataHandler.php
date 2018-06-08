@@ -110,7 +110,10 @@ class GetBGGDataHandler
         } catch (Exception $exception) {
             if (count($ids) !== 1) {
                 $chunks = array_chunk($ids, ceil(count($ids) / 2));
-                $boardgames = array_merge($chunks[0], $chunks[1]);
+                $boardgames = array_merge(
+                    $this->getData($chunks[0]),
+                    $this->getData($chunks[1])
+                );
             }
         }
 
