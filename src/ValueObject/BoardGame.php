@@ -2,6 +2,8 @@
 
 namespace App\ValueObject;
 
+use SimpleXMLElement;
+
 class BoardGame
 {
     /** @var int */
@@ -47,7 +49,7 @@ class BoardGame
      */
     public function getName(): string
     {
-        return $this->name;
+        return htmlspecialchars_decode($this->name);
     }
 
     /**
@@ -55,7 +57,7 @@ class BoardGame
      */
     public function getDescription(): string
     {
-        return $this->description;
+        return htmlspecialchars_decode($this->description);
     }
 
     /**
@@ -64,5 +66,25 @@ class BoardGame
     public function getImage(): ?string
     {
         return $this->image;
+    }
+
+    /**
+     * @return SimpleXMLElement
+     */
+    public function toXML(): SimpleXMLElement
+    {
+        $xmlstr = <<<XML
+<?xml version='1.0' standalone='yes'?>
+<boardgames>
+    <boardgame>
+        <id>{$this->getId()}</id>
+        <name><![CDATA[{$this->getName()}]]></name>
+        <description><![CDATA[{$this->getDescription()}]]></description>
+        <image>{$this->getImage()}</image>
+    </boardgame>
+</boardgames>
+XML;
+
+        return new SimpleXMLElement($xmlstr);
     }
 }

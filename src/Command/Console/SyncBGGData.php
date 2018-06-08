@@ -32,21 +32,32 @@ class SyncBGGData extends Command
             ->setDescription('Imports BoardGameGeek data');
     }
 
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     *
+     * @return int|null|void
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $output->writeln([
-            "Importing BoardGameGeek data",
-            "============================",
-            "",
+            'Importing BoardGameGeek data',
+            '============================',
+            '',
         ]);
 
-        for ($i = 1; $i < 1000000; $i ++) {
+        $total = 1000000;
+        $step = 100;
+
+        for ($i = 1; $i < $total; $i += $step) {
+            $rangeString = "$i to " . ($i + $step);
             try {
-                $this->dataHandler->handle(new GetBGGData($i, true, true, true));
-                $output->writeln("Imported boardgame $i");
+                $this->dataHandler->handle(new GetBGGData(range($i, $i + $step), true, true, true));
+                $output->writeln("<info>Imported boardgames $rangeString</info>");
             } catch (Exception $e) {
-                $output->writeln("<error>Failed to import boardgame $i</error>");
+                $output->writeln("<error>Failed to import boardgames $rangeString</error>");
             }
+            sleep(1);
         }
     }
 }

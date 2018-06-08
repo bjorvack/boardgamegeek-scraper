@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\ValueObject\BoardGame;
+use Exception;
 use SimpleXMLElement;
 
 class GetBGGDataHandler
@@ -30,8 +31,27 @@ class GetBGGDataHandler
      */
     public function handle(GetBGGData $data): void
     {
-        $boardGame = $this->getData($data->getId());
-        $boardGame = $this->copyImageToLocal($boardGame);
+        $boardGames = $this->getData($data->getIds());
+
+        foreach ($boardGames as $boardGame) {
+            $boardGame = $this->copyImageToLocal($boardGame);
+            $this->saveXML($boardGame);
+        }
+    }
+
+    /**
+     * @param BoardGame $boardGame
+     */
+    private function saveXML(BoardGame $boardGame): void
+    {
+        $cachedXMLPath = $this->rootDir . '/../public/boardgames/' . $boardGame->getId() . '/data.xml';
+
+        if (!file_exists($cachedXMLPath)) {
+            $this->saveDataToFile(
+                $cachedXMLPath,
+                $boardGame->toXML()->asXML()
+            );
+        }
     }
 
     /**
@@ -50,7 +70,10 @@ class GetBGGDataHandler
             $result = curl_exec($curl);
             curl_close($curl);
 
-            file_put_contents($cachedImagePath, $result);
+            $this->saveDataToFile(
+                $cachedImagePath,
+                $result
+            );
         }
 
         return new BoardGame(
@@ -62,33 +85,48 @@ class GetBGGDataHandler
     }
 
     /**
-     * @param int $id
+     * @param array $ids
      *
      * @return BoardGame
      */
-    private function getData(int $id): BoardGame
+    private function getData(array $ids): array
     {
-        $data = $this->getCachedData($id);
-        if (empty($data)) {
-            $data = $this->getBoardGameGeekData($id);
+        $boardgames = [];
+
+        try {
+            $data = $this->getCachedData($ids);
+            if (empty($data)) {
+                $data = $this->getBoardGameGeekData($ids);
+            }
+
+            foreach ($data->children() as $child) {
+                $boardgames[] = new BoardGame(
+                    (int) $child->attributes()['id'],
+                    $child->children()->name->attributes()['value'],
+                    $child->children()->description,
+                    $child->children()->image
+                );
+            }
+        } catch (Exception $exception) {
+            if (count($ids) !== 1) {
+                $chunks = array_chunk($ids, ceil(count($ids) / 2));
+                $boardgames = array_merge($chunks[0], $chunks[1]);
+            }
         }
 
-        return new BoardGame(
-            $id,
-            $data->children()[0]->name->attributes()['value'],
-            $data->children()[0]->description,
-            $data->children()[0]->image
-        );
+        return $boardgames;
     }
 
     /**
-     * @param int $id
+     * @param array $ids
      *
      * @return null|SimpleXMLElement
      */
-    private function getCachedData(int $id): ?SimpleXMLElement
+    private function getCachedData(array $ids): ?SimpleXMLElement
     {
-        $cachedDataPath = $this->rootDir . '/../public/boardgames/' . $id . '/raw-data.xml';
+        $id = md5(implode(',', $ids));
+
+        $cachedDataPath = $this->rootDir . '/../var/cache/boardgames/' . $id . '/raw-data.xml';
 
         if (file_exists($cachedDataPath)) {
             return simplexml_load_string(
@@ -100,26 +138,31 @@ class GetBGGDataHandler
     }
 
     /**
-     * @param int $id
+     * @param array $ids
      *
      * @return SimpleXMLElement
      */
-    private function getBoardGameGeekData(int $id): SimpleXMLElement
+    private function getBoardGameGeekData(array $ids): SimpleXMLElement
     {
-        $cachedDataPath = $this->rootDir . '/../public/boardgames/' . $id . '/raw-data.xml';
+        $id = implode(',', $ids);
+        $cachedDataPath = $this->rootDir . '/../var/cache/boardgames/' . md5($id) . '/raw-data.xml';
+
+        $url = $this->bggEndpoint . 'thing?type=boardgame&id=' . $id;
 
         $curl = curl_init();
-        curl_setopt($curl, CURLOPT_URL, $this->bggEndpoint . 'thing?type=boardgame&id=' . $id);
+        curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
         $result = curl_exec($curl);
         curl_close($curl);
 
         $data = simplexml_load_string($result);
 
-        $this->saveDataToFile(
-            $cachedDataPath,
-            $data->asXML()
-        );
+        if ($data->children()->count()) {
+            $this->saveDataToFile(
+                $cachedDataPath,
+                $data->asXML()
+            );
+        }
 
         return $data;
     }
@@ -133,8 +176,11 @@ class GetBGGDataHandler
         $parts = explode('/', $dir);
         $file = array_pop($parts);
         $dir = '';
-        foreach($parts as $part)
-            if(!is_dir($dir .= "/$part")) mkdir($dir);
+        foreach ($parts as $part) {
+            if (!is_dir($dir .= "/$part")) {
+                mkdir($dir);
+            }
+        }
         file_put_contents("$dir/$file", $contents);
     }
 }

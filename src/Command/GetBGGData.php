@@ -5,7 +5,7 @@ namespace App\Command;
 class GetBGGData
 {
     /** @var int */
-    private $id;
+    private $ids;
 
     /** @var bool */
     private $resizeImage;
@@ -17,14 +17,14 @@ class GetBGGData
     private $exportXml;
 
     /**
-     * @param int $id
+     * @param array $id
      * @param bool $resizeImage
      * @param bool $exportJson
      * @param bool $exportXml
      */
-    public function __construct(int $id, bool $resizeImage, bool $exportJson, bool $exportXml)
+    public function __construct(array $ids, bool $resizeImage, bool $exportJson, bool $exportXml)
     {
-        $this->id = $id;
+        $this->ids = $ids;
         $this->resizeImage = $resizeImage;
         $this->exportJson = $exportJson;
         $this->exportXml = $exportXml;
@@ -33,9 +33,9 @@ class GetBGGData
     /**
      * @return int
      */
-    public function getId(): int
+    public function getIds(): array
     {
-        return $this->id;
+        return $this->ids;
     }
 
     /**
