@@ -122,6 +122,8 @@ class GetBGGDataHandler
                 );
             }
         } catch (Exception $exception) {
+            $this->removeBoardGameGeekData($ids);
+
             if (count($ids) !== 1) {
                 $chunks = array_chunk($ids, ceil(count($ids) / 2));
                 $boardgames = array_merge(
@@ -141,9 +143,9 @@ class GetBGGDataHandler
      */
     private function getCachedData(array $ids): ?SimpleXMLElement
     {
-        $id = md5(implode(',', $ids));
-
-        $cachedDataPath = $this->rootDir . '/../var/cache/boardgames/' . $id . '/raw-data.xml';
+        $id = implode(',', $ids);
+        $hash = md5($id);
+        $cachedDataPath = $this->rootDir . '/../var/cache/boardgames/' . substr($hash, 0, 3) . '/' . $hash . '/raw-data.xml';
 
         if (file_exists($cachedDataPath)) {
             return simplexml_load_string(
@@ -154,6 +156,17 @@ class GetBGGDataHandler
         return null;
     }
 
+    private function removeBoardGameGeekData(array $ids): void
+    {
+        $id = implode(',', $ids);
+        $hash = md5($id);
+        $cachedDataPath = $this->rootDir . '/../var/cache/boardgames/' . substr($hash, 0, 3) . '/' . $hash . '/raw-data.xml';
+
+        if (file_exists($cachedDataPath)) {
+            unlink($cachedDataPath);
+        }
+    }
+
     /**
      * @param array $ids
      *
@@ -162,7 +175,8 @@ class GetBGGDataHandler
     private function getBoardGameGeekData(array $ids): SimpleXMLElement
     {
         $id = implode(',', $ids);
-        $cachedDataPath = $this->rootDir . '/../var/cache/boardgames/' . md5($id) . '/raw-data.xml';
+        $hash = md5($id);
+        $cachedDataPath = $this->rootDir . '/../var/cache/boardgames/' . substr($hash, 0, 3) . '/' . $hash . '/raw-data.xml';
 
         $url = $this->bggEndpoint . 'thing?type=boardgame&id=' . $id;
 
