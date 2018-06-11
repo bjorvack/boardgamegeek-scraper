@@ -2,8 +2,10 @@
 
 namespace App\Command;
 
+use App\Exception\BoardGameGeekUnavailableException;
 use App\ValueObject\BoardGame;
 use Exception;
+use GuzzleHttp\Client;
 use SimpleXMLElement;
 
 class GetBGGDataHandler
@@ -112,7 +114,14 @@ class GetBGGDataHandler
             if (empty($data)) {
                 $data = $this->getBoardGameGeekData($ids);
             }
+        } catch (BoardGameGeekUnavailableException $exception) {
+            $this->removeBoardGameGeekData($ids);
+            sleep(60);
 
+            return $this->getData($ids);
+        }
+
+        try {
             foreach ($data->children() as $child) {
                 $boardgames[] = new BoardGame(
                     (int) $child->attributes()['id'],
@@ -171,6 +180,8 @@ class GetBGGDataHandler
      * @param array $ids
      *
      * @return SimpleXMLElement
+     *
+     * @throws BoardGameGeekUnavailableException
      */
     private function getBoardGameGeekData(array $ids): SimpleXMLElement
     {
@@ -180,13 +191,14 @@ class GetBGGDataHandler
 
         $url = $this->bggEndpoint . 'thing?type=boardgame&id=' . $id;
 
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_URL, $url);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        $result = curl_exec($curl);
-        curl_close($curl);
+        $client = new Client();
+        $response = $client->get($url);
 
-        $data = simplexml_load_string($result);
+        if ($response->getStatusCode() === 503) {
+            throw BoardGameGeekUnavailableException::create();
+        }
+
+        $data = simplexml_load_string($response->getBody());
 
         if ($data->children()->count()) {
             $this->saveDataToFile(
