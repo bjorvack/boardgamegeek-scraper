@@ -35,18 +35,19 @@ class GetBGGDataHandler
 
         foreach ($boardGames as $boardGame) {
             $boardGame = $this->copyImageToLocal($boardGame);
-            $this->saveXML($boardGame);
+            $this->saveXML($boardGame, empty($boardGame->getImage()));
         }
     }
 
     /**
      * @param BoardGame $boardGame
+     * @param bool $override
      */
-    private function saveXML(BoardGame $boardGame): void
+    private function saveXML(BoardGame $boardGame, bool $override): void
     {
         $cachedXMLPath = $this->rootDir . '/../public/boardgames/' . $boardGame->getId() . '/data.xml';
 
-        if (!file_exists($cachedXMLPath)) {
+        if (!file_exists($cachedXMLPath) || $override) {
             $this->saveDataToFile(
                 $cachedXMLPath,
                 $boardGame->toXML()->asXML()
@@ -63,7 +64,11 @@ class GetBGGDataHandler
     {
         $cachedImagePath = $this->rootDir . '/../public/boardgames/' . $boardGame->getId() . '/image.jpg';
 
-        if (!file_exists($cachedImagePath)) {
+        if (empty($boardGame->getImage()) && file_exists($cachedImagePath)) {
+            unlink($cachedImagePath);
+        }
+
+        if (!empty($boardGame->getImage()) && !file_exists($cachedImagePath)) {
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_URL, $boardGame->getImage());
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
@@ -73,6 +78,15 @@ class GetBGGDataHandler
             $this->saveDataToFile(
                 $cachedImagePath,
                 $result
+            );
+        }
+
+        if (empty($boardGame->getImage())) {
+            return new BoardGame(
+                $boardGame->getId(),
+                $boardGame->getName(),
+                $boardGame->getDescription(),
+                null
             );
         }
 
@@ -176,6 +190,10 @@ class GetBGGDataHandler
      */
     private function saveDataToFile(string $dir, string $contents): void
     {
+        if (file_exists($dir)) {
+            unlink($dir);
+        }
+
         $parts = explode('/', $dir);
         $file = array_pop($parts);
         $dir = '';
