@@ -53,6 +53,7 @@ class SyncBGGData extends Command
         $step = (int) $input->getArgument('step');
 
         for ($i = 1; $i < $total; $i += $step) {
+            $startTime = intval(microtime());
             $rangeString = "$i to " . ($i + $step);
             try {
                 $this->dataHandler->handle(new GetBGGData(range($i, $i + $step), true, true, true));
@@ -64,7 +65,9 @@ class SyncBGGData extends Command
             }
 
             gc_collect_cycles();
-            sleep(1);
+            if ((intval(microtime()) - $startTime) > 50) {
+                sleep(1);
+            }
         }
     }
 }
