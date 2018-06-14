@@ -65,7 +65,7 @@ class SyncBGGData extends Command
             }
 
             gc_collect_cycles();
-            if ((microtime(true) - $startTime) > 50) {
+            if ((microtime(true) - $startTime) > 1) {
                 sleep(1);
             }
         }
