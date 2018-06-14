@@ -59,8 +59,12 @@ class SyncBGGData extends Command
                 $output->writeln("<info>Imported boardgames $rangeString</info>");
             } catch (Exception $e) {
                 $output->writeln("<error>Failed to import boardgames $rangeString</error>");
+                $output->writeln("<error>" . $e->getMessage() . "</error>");
+                exit;
             }
-            sleep(5);
+
+            gc_collect_cycles();
+            sleep(1);
         }
     }
 }

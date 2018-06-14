@@ -37,7 +37,7 @@ class GetBGGDataHandler
 
         foreach ($boardGames as $boardGame) {
             $boardGame = $this->copyImageToLocal($boardGame);
-            $this->saveXML($boardGame, empty($boardGame->getImage()));
+            $this->saveXML($boardGame);
         }
     }
 
@@ -45,16 +45,14 @@ class GetBGGDataHandler
      * @param BoardGame $boardGame
      * @param bool $override
      */
-    private function saveXML(BoardGame $boardGame, bool $override): void
+    private function saveXML(BoardGame $boardGame): void
     {
         $cachedXMLPath = $this->rootDir . '/../public/boardgames/' . $boardGame->getId() . '/data.xml';
 
-        if (!file_exists($cachedXMLPath) || $override) {
-            $this->saveDataToFile(
-                $cachedXMLPath,
-                $boardGame->toXML()->asXML()
-            );
-        }
+        $this->saveDataToFile(
+            $cachedXMLPath,
+            $boardGame->toXML()->asXML()
+        );
     }
 
     /**
@@ -64,26 +62,31 @@ class GetBGGDataHandler
      */
     private function copyImageToLocal(BoardGame $boardGame): BoardGame
     {
-        $cachedImagePath = $this->rootDir . '/../public/boardgames/' . $boardGame->getId() . '/image.jpg';
+        if (!empty($boardGame->getImage())) {
+            $extension = array_reverse(explode('.', $boardGame->getImage()))[0];
+            $cachedImagePath = $this->rootDir . '/../public/boardgames/' . $boardGame->getId() . '/image.' . $extension;
+        }
 
-        if (empty($boardGame->getImage()) && file_exists($cachedImagePath)) {
+        if (!empty($boardGame->getImage()) && file_exists($cachedImagePath) && !filesize($cachedImagePath)) {
             unlink($cachedImagePath);
         }
 
-        if (!empty($boardGame->getImage()) && !file_exists($cachedImagePath)) {
+        if ((!empty($boardGame->getImage()) && !file_exists($cachedImagePath))) {
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_URL, $boardGame->getImage());
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
             $result = curl_exec($curl);
             curl_close($curl);
 
-            $this->saveDataToFile(
-                $cachedImagePath,
-                $result
-            );
+            if (!empty($result)) {
+                $this->saveDataToFile(
+                    $cachedImagePath,
+                    $result
+                );
+            }
         }
 
-        if (empty($boardGame->getImage())) {
+        if (empty($boardGame->getImage()) || !file_exists($cachedImagePath)) {
             return new BoardGame(
                 $boardGame->getId(),
                 $boardGame->getName(),
@@ -96,7 +99,7 @@ class GetBGGDataHandler
             $boardGame->getId(),
             $boardGame->getName(),
             $boardGame->getDescription(),
-            '/boardgames/' . $boardGame->getId() . '/image.jpg'
+            '/boardgames/' . $boardGame->getId() . '/image.'. $extension
         );
     }
 
@@ -194,7 +197,7 @@ class GetBGGDataHandler
         $client = new Client();
         $response = $client->get($url);
 
-        if ($response->getStatusCode() === 503) {
+        if ($response->getStatusCode() === 429) {
             throw BoardGameGeekUnavailableException::create();
         }
 
