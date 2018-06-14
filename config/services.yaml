@@ -30,3 +30,7 @@ services:
       arguments:
         - '%kernel.root_dir%'
         - '%boardgamegeek_api%'
+
+    App\Command\ResizeImageHandler:
+      arguments:
+        - '%kernel.root_dir%'
