@@ -4,6 +4,7 @@ namespace App\Command\Console;
 
 use App\Command\GetBGGData;
 use App\Command\GetBGGDataHandler;
+use App\Exception\NoBoardGameAddedException;
 use Exception;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -66,8 +67,10 @@ class SyncBGGData extends Command
 
             gc_collect_cycles();
             if ((microtime(true) - $startTime) > 1) {
-                sleep(1);
+                sleep(5);
             }
         }
+
+        $output->writeln("<info>No more boardgames to import.</info>");
     }
 }
